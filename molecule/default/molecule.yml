@@ -1,0 +1,36 @@
+---
+dependency:
+  name: galaxy
+
+driver:
+  name: docker
+
+platforms:
+  - name: instance
+    groups:
+      - all
+    inventory_config_import: ../../inventory/all/all.yml
+    image: geerlingguy/docker-ubuntu2204-ansible:latest
+    command: ${MOLECULE_DOCKER_COMMAND:-""}
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+    cgroupns_mode: host
+    privileged: true
+    pre_build_image: true
+
+provisioner:
+  name: ansible
+  # config_options:
+    # tags:
+    #   skip: molecule-skip
+  # env:
+  inventory:
+    links:
+      group_vars: ../../group_vars
+      host_vars: ../../host_vars
+    host_vars:
+      localhost:
+        ansible_user: ansible
+
+verifier:
+  name: ansible

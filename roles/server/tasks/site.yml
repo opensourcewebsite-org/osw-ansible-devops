@@ -1,0 +1,46 @@
+- name: Add the opensourcewebsite.org user
+  ansible.builtin.user:
+    name: opensourcewebsite.org
+    shell: /bin/false
+    groups: "www-data"
+    append: true
+    password: "*"
+    home: /www/opensourcewebsite.org
+  notify:
+    - Restart php-fpm
+
+- name: Manage ssh config file
+  ansible.builtin.lineinfile:
+    dest: "/www/opensourcewebsite.org/.ssh/config"
+    line: |
+      Host *
+        StrictHostKeyChecking accept-new
+    state: present
+    create: true
+    owner: opensourcewebsite.org
+    group: opensourcewebsite.org
+    mode: '0600'
+    backup: true
+  notify:
+    - Restart php-fpm
+
+- name: Add application dir
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: opensourcewebsite.org
+    group: opensourcewebsite.org
+    mode: '0770'
+  with_items:
+    - /www/opensourcewebsite.org/htdocs/
+    - /www/opensourcewebsite.org/logs/
+    - /www/opensourcewebsite.org/tmp/
+
+- name: Setup composer
+  become_user: opensourcewebsite.org
+  ansible.builtin.shell: |
+    set -o pipefail
+    composer config --global discard-changes true
+  args:
+    executable: /usr/bin/bash
+  changed_when: false

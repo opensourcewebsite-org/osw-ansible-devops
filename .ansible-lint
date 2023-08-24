@@ -1,0 +1,15 @@
+profile: production # min, basic, moderate,safety, shared, production
+
+exclude_paths:
+  # - molecule/
+  - roles-external/
+  - collections/
+
+skip_list:
+  - yaml[line-length]
+  - skip_ansible_lint
+  - role-name
+  - name[play]
+  - name[casing]
+  - name[template]
+  - var-naming[no-role-prefix]

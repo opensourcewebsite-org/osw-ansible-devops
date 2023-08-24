@@ -1,0 +1,65 @@
+- name: Install a list of packages
+  ansible.builtin.package:
+    name:
+      - mc
+      - htop
+      - sshguard
+      - rsyslog
+      - ccze
+      - certbot
+      - chrony
+      - hdparm
+      - iftop
+      - iotop
+      - landscape-common
+      - lsof
+      - python3-pip
+      - python3-certbot-dns-cloudflare
+      - python3-certbot-nginx
+      - python3-software-properties
+      - software-properties-common
+      - sudo
+      - sysstat
+      - tmux
+      - unattended-upgrades
+      - update-manager-core
+      - update-notifier-common
+      - gnupg2
+      - ca-certificates
+      - lsb-release
+      - ubuntu-keyring
+    state: present
+
+- name: Setup swap file
+  ansible.builtin.import_role:
+    name: geerlingguy.swap
+  tags:
+    - fresh_install
+    - molecule-notest
+
+- name: Manage unattended-upgrades
+  ansible.builtin.lineinfile:
+    dest: "/etc/apt/apt.conf.d/20auto-upgrades"
+    regexp: "{{ item.regexp }}"
+    line: "{{ item.line }}"
+    state: present
+    backup: true
+  with_items: "{{ unattended_upgrades }}"
+
+- name: Manage tmux config file
+  ansible.builtin.template:
+    src: 'tmux.conf.j2'
+    dest: '/etc/tmux.conf'
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Change various sysctl-settings
+  ansible.posix.sysctl:
+    name: '{{ item.key }}'
+    value: '{{ item.value }}'
+    sysctl_set: true
+    state: present
+    reload: true
+    ignoreerrors: true
+  with_dict: '{{ sysctl_config }}'

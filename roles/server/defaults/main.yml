@@ -1,0 +1,39 @@
+---
+# defaults file for server
+
+unattended_upgrades:
+  - {
+    regexp: "APT::Periodic::Update-Package-Lists",
+    line: "APT::Periodic::Update-Package-Lists \"0\";"
+  }
+  - {
+    regexp: "APT::Periodic::Unattended-Upgrade",
+    line: "APT::Periodic::Unattended-Upgrade \"0\";"
+  }
+
+sysctl_config:
+  net.ipv6.conf.all.disable_ipv6: 1
+  net.ipv6.conf.default.disable_ipv6: 1
+  net.ipv6.conf.lo.disable_ipv6: 1
+  vm.swappiness: 0
+
+php_packages:
+  - "php{{ php_default_version_debian }}"
+  - "php{{ php_default_version_debian }}-bcmath"
+  - "php{{ php_default_version_debian }}-cli"
+  - "php{{ php_default_version_debian }}-common"
+  - "php{{ php_default_version_debian }}-fpm"
+  - "php{{ php_default_version_debian }}-curl"
+  - "php{{ php_default_version_debian }}-dev"
+  - "php{{ php_default_version_debian }}-gd"
+  - "php{{ php_default_version_debian }}-gmp"
+  - "php{{ php_default_version_debian }}-imagick"
+  - "php{{ php_default_version_debian }}-intl"
+  - "php{{ php_default_version_debian }}-mbstring"
+  - "php{{ php_default_version_debian }}-mcrypt"
+  - "php{{ php_default_version_debian }}-mysql"
+  - "php{{ php_default_version_debian }}-soap"
+  - "php{{ php_default_version_debian }}-xml"
+  - "php{{ php_default_version_debian }}-zip"
+
+ioncube_archive_url: https://downloads.ioncube.com/loader_downloads/ioncube_loaders_lin_x86-64.tar.gz

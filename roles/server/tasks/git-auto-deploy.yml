@@ -1,0 +1,33 @@
+- name: Install a list of packages
+  ansible.builtin.package:
+    name:
+      - python2.7
+      - python2-dev
+      - python-pip
+    state: present
+
+- name: Install Dependency
+  ansible.builtin.pip:
+    name:
+      - typing
+    executable: pip2
+
+- name: Install git-auto-deploy
+  ansible.builtin.pip:
+    name:
+      - git-auto-deploy
+    executable: pip2
+
+- name: Install git-auto-deploy
+  ansible.builtin.template:
+    src: 'git-auto-deploy.conf.json.j2'
+    dest: '/etc/git-auto-deploy-opensourcewebsite.org.conf.json'
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Install a list of packages
+  ansible.builtin.package:
+    name:
+      - python3-pip
+    state: present

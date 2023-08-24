@@ -1,0 +1,53 @@
+---
+# tasks file for server
+
+- name: Setup basic-linux settings
+  ansible.builtin.include_tasks: basic-linux.yml
+  tags:
+    - basic-linux
+
+- name: Setup Users
+  ansible.builtin.include_tasks: users.yml
+  tags:
+    - users
+
+# - name: Setup Firewall
+#   ansible.builtin.include_tasks: firewall.yml
+  # tags:
+  #   - php
+
+- name: Setup PHP
+  ansible.builtin.include_tasks: php.yml
+  tags:
+    - php
+
+- name: Setup site user
+  ansible.builtin.include_tasks: site.yml
+  tags:
+    - site
+
+- name: Setup SSL
+  ansible.builtin.include_tasks: ssl.yml
+  tags:
+    - molecule-notest
+    - ssl
+
+- name: Setup Nginx
+  ansible.builtin.include_tasks: nginx.yml
+  tags:
+    - nginx
+
+- name: Setup Exim
+  ansible.builtin.include_tasks: exim.yml
+  tags:
+    - exim
+
+- name: Setup git-auto-deploy
+  ansible.builtin.include_tasks: git-auto-deploy.yml
+  tags:
+    - git-auto-deploy
+
+- name: Setup supervisor
+  ansible.builtin.include_tasks: supervisor.yml
+  tags:
+    - supervisor

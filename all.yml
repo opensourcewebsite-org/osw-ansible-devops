@@ -1,0 +1,13 @@
+---
+- hosts: all:!windows
+  name: Setup server
+  become: true
+  roles:
+    - role: devsec.hardening.os_hardening
+      tags:
+        - hardening
+    - role: devsec.hardening.ssh_hardening
+      tags:
+        - hardening
+        - molecule-notest
+    - role: server

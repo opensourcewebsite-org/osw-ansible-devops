@@ -1,0 +1,35 @@
+---
+- name: Converge
+  hosts: all
+
+  pre_tasks:
+    - name: Update apt cache.
+      ansible.builtin.apt:
+        name:
+          - mc
+          - htop
+          - net-tools
+          - dirmngr
+          - curl
+          - openssh-server
+          - python3-pip
+        update_cache: true
+        cache_valid_time: 600
+      when: ansible_os_family == 'Debian'
+      tags:
+        - pre-task
+    - name: Install python modules
+      ansible.builtin.pip:
+        name:
+          - requests==2.28.1
+          - urllib3<2
+        executable: pip3
+      tags:
+        - pre-task
+    - name: Generate snakeoil ssl
+      ansible.builtin.command: openssl req -x509 -newkey rsa:4096 -nodes -sha256 -keyout /etc/ssl/private/ssl-cert-snakeoil.key -out /etc/ssl/certs/ssl-cert-snakeoil.pem -days 3650 -subj "/CN=localhost"
+      changed_when: false
+      tags:
+        - pre-task
+
+- import_playbook: ../../all.yml

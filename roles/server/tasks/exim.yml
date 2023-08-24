@@ -1,0 +1,145 @@
+- name: Set default vars
+  ansible.builtin.debconf:
+    name: exim4
+    question: exim4/mailname
+    value: localhost
+    vtype: string
+
+- name: Set default vars
+  ansible.builtin.debconf:
+    name: exim4
+    question: exim4/dc_localdelivery
+    value: "mbox format in /var/mail/"
+    vtype: select
+
+- name: Set default vars
+  ansible.builtin.debconf:
+    name: exim4
+    question: exim4/dc_eximconfig_configtype
+    value: "internet site; mail is sent and received directly using SMTP"
+    vtype: select
+
+- name: Set default vars
+  ansible.builtin.debconf:
+    name: exim4
+    question: exim4/use_split_config
+    value: true
+    vtype: boolean
+
+- name: Set default vars
+  ansible.builtin.debconf:
+    name: exim4
+    question: exim4/dc_local_interfaces
+    value: "127.0.0.1"
+    vtype: string
+
+- name: Set default vars
+  ansible.builtin.debconf:
+    name: exim4
+    question: exim4/dc_other_hostnames
+    value: "localhost"
+    vtype: string
+
+- name: Set default vars
+  ansible.builtin.debconf:
+    name: exim4
+    question: exim4/dc_postmaster
+    value: "root"
+    vtype: string
+
+- name: Install Exim
+  ansible.builtin.package:
+    name:
+      - exim4
+
+- name: Set chown to Exim dirs
+  ansible.builtin.file:
+    path: /etc/exim4/dkim
+    state: directory
+    mode: "0755"
+    owner: Debian-exim
+    group: Debian-exim
+    recurse: true
+
+- name: Check if file exist
+  ansible.builtin.stat:
+    path: "/etc/exim4/dkim/opensourcewebsite.org.key"
+  register: exim_dkim
+
+- name: Genetate exim ssl keys
+  ansible.builtin.shell: |
+    openssl genrsa -out opensourcewebsite.org.key 1024
+    openssl rsa -pubout -in opensourcewebsite.org.key -out opensourcewebsite.org.public
+  become_user: Debian-exim
+  args:
+    chdir: /etc/exim4/dkim/
+  when: not exim_dkim.stat.exists
+  changed_when: false
+  notify:
+    - Restart Exim
+
+- name: Fix exim template
+  ansible.builtin.lineinfile:
+    dest: /etc/exim4/exim4.conf.template
+    regexp: "^domainlist local_domains = MAIN_LOCAL_DOMAINS"
+    line: "domainlist local_domains = localhost : localhost.localdomain"
+  notify:
+    - Restart Exim
+
+- name: Fix exim template
+  ansible.builtin.blockinfile:
+    dest: /etc/exim4/exim4.conf.template
+    insertbefore: "^### end transport/30_exim4-config_remote_smtp"
+    block: |
+      DKIM_DOMAIN = ${lc:${domain:$h_from:}}
+      DKIM_KEY_FILE = /etc/exim4/dkim/opensourcewebsite.org.key
+      DKIM_PRIVATE_KEY = ${if exists{DKIM_KEY_FILE}{DKIM_KEY_FILE}{0}}
+      DKIM_SELECTOR = prod
+  notify:
+    - Restart Exim
+
+- name: Configure Exim
+  ansible.builtin.lineinfile:
+    dest: /etc/exim4/exim4.conf.localmacros
+    line: "MAIN_TLS_ENABLE = 1"
+    create: true
+    mode: "0644"
+    owner: Debian-exim
+    group: Debian-exim
+
+  notify:
+    - Restart Exim
+
+- name: Del file
+  ansible.builtin.file:
+    path: "/etc/exim4/update-exim4.conf.conf"
+    state: absent
+
+- name: Configure Exim
+  ansible.builtin.blockinfile:
+    create: true
+    dest: /etc/exim4/update-exim4.conf.conf
+    block: |
+      dc_eximconfig_configtype='smarthost'
+      dc_other_hostnames=''
+      dc_local_interfaces='127.0.0.1'
+      dc_readhost='opensourcewebsite.org'
+      dc_relay_domains=''
+      dc_minimaldns='false'
+      dc_relay_nets=''
+      dc_smarthost='smtp.sendgrid.net::587'
+      CFILEMODE='644'
+      dc_use_split_config='false'
+      dc_hide_mailname='true'
+      dc_mailname_in_oh='true'
+      dc_localdelivery='mail_spool'
+    mode: "0644"
+    owner: Debian-exim
+    group: Debian-exim
+  notify:
+    - Restart Exim
+
+# - name: Configure Exim
+#   ansible.builtin.lineinfile:
+#     dest: /etc/exim4/passwd.client
+#     line: "*:apikey:<SetYourAPIKey>"

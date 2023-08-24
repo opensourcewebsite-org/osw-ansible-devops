@@ -1,0 +1,25 @@
+- name: Add php repo
+  ansible.builtin.apt_repository:
+    repo: ppa:ondrej/php
+
+- name: Install php if it not installed
+  ansible.builtin.import_role:
+    name: geerlingguy.php
+
+- name: Download and install Composer
+  ansible.builtin.shell: |
+    set -o pipefail
+    curl -sS https://getcomposer.org/installer | php
+  args:
+    chdir: /usr/src/
+    executable: /usr/bin/bash
+  changed_when: false
+
+- name: Add Composer to global path
+  ansible.builtin.copy:
+    dest: /usr/local/bin/composer
+    owner: root
+    group: root
+    mode: '0755'
+    src: /usr/src/composer.phar
+    remote_src: true

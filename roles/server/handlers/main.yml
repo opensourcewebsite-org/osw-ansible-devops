@@ -1,0 +1,25 @@
+---
+# handlers file for server
+
+- name: Restart sshguard
+  ansible.builtin.service:
+    name: sshguard
+    state: restarted
+
+- name: Restart nginx
+  ansible.builtin.systemd:
+    name: 'nginx'
+    state: restarted
+    daemon_reload: true
+
+- name: Restart Exim
+  ansible.builtin.systemd:
+    name: 'exim4'
+    state: restarted
+    daemon_reload: true
+
+- name: Restart php-fpm
+  ansible.builtin.systemd:
+    name: 'php{{ php_default_version_debian }}-fpm'
+    state: restarted
+    daemon_reload: true

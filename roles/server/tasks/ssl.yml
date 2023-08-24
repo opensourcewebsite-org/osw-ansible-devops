@@ -1,0 +1,43 @@
+- name: Manage Certbot
+  ansible.builtin.import_role:
+    name: geerlingguy.certbot
+  tags:
+    - ssl
+
+- name: Install Certbot Cloudflare
+  ansible.builtin.package:
+    name: python3-certbot-dns-cloudflare
+    state: present
+  tags:
+    - ssl
+
+- name: Create Certbot folder - /etc/letsencrypt
+  ansible.builtin.file:
+    path: /etc/letsencrypt
+    state: directory
+    owner: root
+    group: root
+    mode: "0700"
+  tags:
+    - ssl
+
+- name: Check if file exist
+  ansible.builtin.stat:
+    path: "/etc/letsencrypt/live/{{ le_ssl_domain_name }}/fullchain.pem"
+  register: "le_ssl"
+
+- name: Certbot | Generate Certificate
+  ansible.builtin.command: "certbot -v certonly --cert-name {{ le_ssl_domain_name }} --dns-cloudflare --dns-cloudflare-credentials /etc/letsencrypt/cloudflareapi.ini --dns-cloudflare-propagation-seconds 60 -d '{{ le_ssl_domain_name }}' -d '*.{{ le_ssl_domain_name }}'"
+  args:
+    creates: /etc/letsencrypt/renewal/{{ le_ssl_domain_name }}.conf
+  when: not le_ssl.stat.exists
+  tags:
+    - ssl
+
+- name: Check Certbot File - post_hook
+  ansible.builtin.lineinfile:
+    dest: /etc/letsencrypt/renewal/{{ le_ssl_domain_name }}.conf
+    line: "post_hook = /bin/systemctl restart nginx.service"
+    regexp: "^post_hook ="
+  tags:
+    - ssl

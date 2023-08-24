@@ -1,0 +1,96 @@
+- name: Add the common_users
+  ansible.builtin.user:
+    name: '{{ item.name }}'
+    shell: /bin/bash
+    groups: 'sudo'
+    password: '{{ item.password }}'
+    expires: -1
+    append: true
+  with_items:
+    - "{{ common_users }}"
+
+- name: Setup ssh keys for common_users
+  ansible.posix.authorized_key:
+    user: "{{ item.name }}"
+    state: present
+    key: "{{ item.ssh_keys|join('\n') }}"
+    exclusive: true
+  with_items:
+    - "{{ common_users }}"
+
+- name: Manage sudoers file for common_users
+  ansible.builtin.template:
+    src: 'common_user_sudoers.j2'
+    dest: '/etc/sudoers.d/{{ item.name }}'
+    mode: "0440"
+    validate: /usr/sbin/visudo -cf %s
+  with_items:
+    - '{{ common_users }}'
+
+- name: Manage custom sudoers file
+  ansible.builtin.template:
+    src: 'custom_sudoers.j2'
+    dest: '/etc/sudoers.d/custom'
+    validate: /usr/sbin/visudo -cf %s
+    mode: "0440"
+
+- name: Add the server specific users
+  ansible.builtin.user:
+    name: '{{ item.name }}'
+    shell: /bin/bash
+    password: '{{ item.password }}'
+    expires: -1
+  with_items:
+    - "{{ ssh_users | default([]) }}"
+
+- name: Add users ssh keys
+  ansible.posix.authorized_key:
+    user: '{{ item.name }}'
+    state: present
+    key: "{{ item.ssh_keys|join('\n') }}"
+    exclusive: true
+  with_items:
+    - "{{ ssh_users | default([]) }}"
+
+- name: Manage sudoers file for server specific users
+  ansible.builtin.template:
+    src: 'regular_user_sudoers.j2'
+    dest: '/etc/sudoers.d/{{ item.name }}'
+    mode: "0440"
+    validate: /usr/sbin/visudo -cf %s
+  with_items:
+    - "{{ ssh_users | default([]) }}"
+
+- name: Remove revoked_users
+  ansible.builtin.user:
+    name: '{{ item }}'
+    state: absent
+    remove: true
+  with_items:
+    - '{{ revoked_users }}'
+
+- name: Add the opensourcewebsite.org user
+  ansible.builtin.user:
+    name: opensourcewebsite.org
+    shell: /bin/false
+    groups: "www-data"
+    append: true
+    password: "*"
+    home: /www/opensourcewebsite.org
+  notify:
+    - Restart php-fpm
+
+- name: Manage ssh config file
+  ansible.builtin.lineinfile:
+    dest: "/www/opensourcewebsite.org/.ssh/config"
+    line: |
+      Host *
+        StrictHostKeyChecking accept-new
+    state: present
+    create: true
+    owner: opensourcewebsite.org
+    group: opensourcewebsite.org
+    mode: '0600'
+    backup: true
+  notify:
+    - Restart php-fpm

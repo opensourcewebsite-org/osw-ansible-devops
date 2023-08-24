@@ -1,0 +1,21 @@
+- name: Create SSL directory.
+  ansible.builtin.file:
+    path: /etc/nginx/ssl
+    state: directory
+    mode: "0755"
+  tags:
+    - fresh_install
+
+- name: Download dhparam file
+  ansible.builtin.get_url:
+    url: https://ssl-config.mozilla.org/ffdhe4096.txt
+    dest: /etc/nginx/ssl/dhparams.pem
+    mode: '0644'
+  tags:
+    - fresh_install
+
+- name: Install nginx if it not installed
+  ansible.builtin.import_role:
+    name: geerlingguy.nginx
+  tags:
+    - fresh_install

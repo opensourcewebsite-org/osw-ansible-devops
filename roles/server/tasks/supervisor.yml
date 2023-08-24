@@ -1,0 +1,5 @@
+- name: Manage Supervosor
+  ansible.builtin.import_role:
+    name: geerlingguy.supervisor
+  tags:
+    - supervisor

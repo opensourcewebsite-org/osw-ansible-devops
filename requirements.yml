@@ -1,0 +1,10 @@
+roles:
+  - src: geerlingguy.nginx
+  - src: geerlingguy.php
+  - src: geerlingguy.swap
+  - src: geerlingguy.certbot
+  - src: geerlingguy.supervisor
+
+collections:
+  - name: devsec.hardening
+    type: galaxy

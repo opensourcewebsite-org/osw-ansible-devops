@@ -1,0 +1,142 @@
+ssh_users:
+  - name: "a.savinov"
+    password: "{{ lookup('ansible.builtin.file', '/srv/user-passwords.txt') }}"
+    ssh_keys:
+      - "ssh-rsa AAAAB3NzaC1yc2EAAAABJQAAAQEAgt5A73G1nYqXF2Cxh1eXv5sHSnSXJxbQfzPUZzbHIr/Q+qFgWy1F0qoxyjNlSPJyyG0pgZs1qjSfwRL4d6xT8Df1AmCNOhs50UvAH8YuwPCc0Il+GBVSL/D8ago1bXQZiaelShQmRgbqIxmY464uFzq0Y8ayz+IEoRC1exKyvd+i/Uf5fXm9Ifzhrc7lGAhiR8HkHk9FDhQNfHZreZGFvurd4Uzt6N8cYnu7DRSPO8UHth3a7JhE2lMbxL93S/ADSokwnMkUEcTIfvgNLlBLA82yJYsSQdKrb8rrmqitXlVKIPC3WFU+G1nTs+i6ePgDGRAWjAQEAUWkqYXNls1PYQ== aliaksei.savinau"
+
+le_ssl_domain_name: opensourcewebsite.org
+
+php_fpm_state: restarted
+php_fpm_enabled_on_boot: true
+php_fpm_daemon: "php{{ php_default_version_debian }}-fpm"
+php_fpm_pool_user: opensourcewebsite.org
+php_fpm_pool_group: opensourcewebsite.org
+php_fpm_pools:
+  - pool_name: opensourcewebsite.org
+    pool_template: www.conf.j2
+    pool_listen: "/run/php/{{ php_default_version_debian }}-opensourcewebsite.org.sock"
+    pool_listen_allowed_clients: "127.0.0.1"
+    pool_pm: dynamic
+    pool_pm_max_children: 5
+    pool_pm_start_servers: 2
+    pool_pm_min_spare_servers: 2
+    pool_pm_max_spare_servers: 5
+    pool_pm_max_requests: 500
+    pool_pm_status_path: /status
+
+nginx_listen_ipv6: false
+
+nginx_vhosts:
+  - listen: "80"
+    server_name: "opensourcewebsite.org"
+    root: "/www/opensourcewebsite.org/htdocs/web"
+    index: "index.php"
+    state: "present"
+    template: "{{ nginx_vhost_template }}"
+    filename: "opensourcewebsite.org.conf"
+    extra_parameters: |
+      location ^~ /.well-known/ {
+          default_type text/plain;
+      }
+
+      # location /.well-known/ {
+      #     return 404;
+      # }
+
+      return 301  https://$server_name$request_uri;
+
+  - listen: "443 ssl http2"
+    server_name: "opensourcewebsite.org"
+    root: "/www/opensourcewebsite.org/htdocs/web"
+    index: "index.php"
+    access_log: "/www/opensourcewebsite.org/logs/nginx-access.log"
+    error_log: "/www/opensourcewebsite.org/logs/nginx-error.log"
+    state: "present"
+    template: "{{ nginx_vhost_template }}"
+    filename: "opensourcewebsite.org-ssl.conf"
+    extra_parameters: |
+      charset off;
+      ssi on;
+      proxy_intercept_errors on;
+      fastcgi_intercept_errors on;
+
+      location ^~ /.well-known/ {
+          default_type text/plain;
+      }
+
+      # location /.well-known/ {
+      #     return 404;
+      # }
+
+      location ~ /\. {
+          deny all;
+          log_not_found off;
+      }
+
+      location / {
+
+          rewrite ^premium_post\.php$ /wp-content/plugins/premiumbox/premium/sitepage/premium_post.php last;
+          rewrite ^premium_quicktags\.php$ /wp-content/plugins/premiumbox/premium/sitepage/premium_quicktags.php last;
+          rewrite ^premium_action-([a-zA-Z0-9\_]+)\.php$ /wp-content/plugins/premiumbox/premium/sitepage/premium_action.php?pn_action=$1 last;
+          rewrite ^premium_request-([a-zA-Z0-9\_]+)\.php$ /wp-content/plugins/premiumbox/premium/sitepage/premium_request.php?pn_action=$1 last;
+          rewrite ^premium_script\.php$ /wp-content/plugins/premiumbox/premium/sitepage/premium_script.php last;
+          rewrite ^api\.php$ /wp-content/plugins/premiumbox/premium/sitepage/premium_api.php last;
+          rewrite ^merchant-([a-zA-Z0-9\_]+)\.php$ /wp-content/plugins/premiumbox/premium/sitepage/premium_merchant.php?pn_action=$1 last;
+          rewrite ^cron\.php$ /wp-content/plugins/premiumbox/premium/sitepage/premium_cron.php last;
+          rewrite ^cron-([a-zA-Z0-9\_]+).php$ /wp-content/plugins/premiumbox/premium/sitepage/premium_cron.php?pn_action=$1 last;
+          rewrite ^exportxml\.xml$ /wp-content/plugins/premiumbox/deprecated/exportxml.php last;
+
+          try_files $uri $uri/ /index.php?$args;
+      }
+
+      location ~ \.php$ {
+          try_files $uri $uri/ /index.php?q=$uri&$args;
+          fastcgi_split_path_info ^((?U).+\.ph(?:p\d*|tml))(/?.+)$;
+          fastcgi_pass unix:/run/php/{{ php_default_version_debian }}-opensourcewebsite.org.sock;
+          fastcgi_index  index.php;
+          fastcgi_param  SCRIPT_FILENAME  $document_root$fastcgi_script_name;
+          fastcgi_param  SCRIPT_NAME $fastcgi_script_name;
+          fastcgi_param  DOCUMENT_ROOT $document_root;
+          fastcgi_connect_timeout 60;
+          fastcgi_send_timeout 180;
+          fastcgi_read_timeout 180;
+          fastcgi_buffer_size 128k;
+          fastcgi_buffers 4 256k;
+          fastcgi_busy_buffers_size 256k;
+          fastcgi_temp_file_write_size 256k;
+          fastcgi_intercept_errors on;
+          include fastcgi_params;
+      }
+
+      ssl_stapling on;
+      ssl_stapling_verify on;
+      ssl_protocols TLSv1.2 TLSv1.3;
+      ssl_prefer_server_ciphers on;
+      ssl_ciphers TLS-CHACHA20-POLY1305-SHA256:TLS-AES-256-GCM-SHA384:TLS-AES-128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES256-GCM-SHA384:DHE-RSA-AES128-GCM-SHA256:DHE-DSS-AES128-GCM-SHA256:kEDH+AESGCM:ECDHE-RSA-AES128-SHA256:ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES128-SHA:ECDHE-ECDSA-AES128-SHA:ECDHE-RSA-AES256-SHA384:ECDHE-ECDSA-AES256-SHA384:ECDHE-RSA-AES256-SHA:ECDHE-ECDSA-AES256-SHA:DHE-RSA-AES128-SHA256:DHE-RSA-AES128-SHA:DHE-DSS-AES128-SHA256:DHE-RSA-AES256-SHA256:DHE-DSS-AES256-SHA:DHE-RSA-AES256-SHA:!aNULL:!eNULL:!EXPORT:!DES:!RC4:!3DES:!MD5:!PSK;
+      ssl_session_timeout 4h;
+      ssl_session_cache shared:SSL:40m;
+      ssl_dhparam /etc/nginx/ssl/dhparams.pem;
+      ssl_ecdh_curve secp384r1;
+      ssl_early_data on;
+      resolver_timeout 10s;
+      resolver 8.8.8.8 8.8.4.4 valid=300s;
+      ssl_certificate     /etc/letsencrypt/live/opensourcewebsite.org/fullchain.pem;
+      ssl_certificate_key /etc/letsencrypt/live/opensourcewebsite.org/privkey.pem;
+
+
+
+supervisor_programs:
+
+  - name: 'opensourcewebsite-gitautodeploy-8005'
+    command: >- 
+      /usr/local/bin/git-auto-deploy
+      --quiet 
+      --config /etc/git-auto-deploy-opensourcewebsite.org.conf.json
+    state: present
+    configuration: |
+      directory=/www/opensourcewebsite.org
+      autostart=true
+      autorestart=true
+      stderr_logfile=/var/log/supervisor/git-auto-deploy-opensourcewebsite.org-stdout.log
+      stdout_logfile=/var/log/supervisor/git-auto-deploy-opensourcewebsite.org-stdout.log
+      user=opensourcewebsite.org

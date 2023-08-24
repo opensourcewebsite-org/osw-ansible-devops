@@ -1,0 +1,3 @@
+# Cloudflare API credentials used by Certbot
+dns_cloudflare_api_token = {{ certbot_cloudflare_api_token | default(lookup('env','CF_API_TOKEN')) }}
+dns_cloudflare_email = {{ certbot_cloudflare_email | default(lookup('env','CF_EMAIL')) }}
